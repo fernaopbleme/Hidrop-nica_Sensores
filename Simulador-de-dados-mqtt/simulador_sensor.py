@@ -5,16 +5,23 @@ from datetime import datetime
 
 import paho.mqtt.client as mqtt
 
-# Configurações MQTT
+# =========================
+# CONFIGURAÇÕES MQTT
+# =========================
+
 BROKER = "broker.hivemq.com"
-PORT = 1883
+PORT = 8883  # TLS
 TOPIC = "aeroponia/sensores/dados"
 
-# Função para gerar valores aleatórios
+
+# =========================
+# FUNÇÕES AUXILIARES
+# =========================
+
 def random_between(min_val, max_val, decimals=2):
     return round(random.uniform(min_val, max_val), decimals)
 
-# Função que simula os sensores
+
 def gerar_dados():
     return {
         "ph": random_between(5.4, 7.2),
@@ -26,34 +33,66 @@ def gerar_dados():
         "timestamp": datetime.now().isoformat()
     }
 
-# Callback de conexão
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print("Conectado ao broker MQTT!")
-    else:
-        print(f"Erro ao conectar: {rc}")
 
-# Criando cliente MQTT
-client = mqtt.Client()
+# =========================
+# CALLBACK DE CONEXÃO
+# =========================
+
+def on_connect(client, userdata, flags, rc):
+    print(f"on_connect chamado. Código: {rc}", flush=True)
+
+    if rc == 0:
+        print("Conectado ao broker MQTT com TLS!", flush=True)
+        print(f"Publicando no tópico: {TOPIC}", flush=True)
+    else:
+        print(f"Erro ao conectar: {rc}", flush=True)
+
+
+# =========================
+# CLIENTE MQTT
+# =========================
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+
+# Ativa TLS/SSL
+client.tls_set()
+
 client.on_connect = on_connect
 
-# Conectar ao broker
+
+# =========================
+# CONEXÃO MQTT
+# =========================
+
+print("Iniciando simulador...", flush=True)
+print(f"Broker: {BROKER}", flush=True)
+print(f"Porta: {PORT}", flush=True)
+print(f"Tópico: {TOPIC}", flush=True)
+
 client.connect(BROKER, PORT, 60)
 
-# Loop principal
+# Mantém conexão ativa em background
 client.loop_start()
+
+
+# =========================
+# LOOP PRINCIPAL
+# =========================
 
 try:
     while True:
         dados = gerar_dados()
-        
-        client.publish(TOPIC, json.dumps(dados))
-        
-        print("Dados enviados:", dados)
-        
+
+        resultado = client.publish(TOPIC, json.dumps(dados))
+
+        if resultado.rc == mqtt.MQTT_ERR_SUCCESS:
+            print("Dados enviados:", dados, flush=True)
+        else:
+            print(f"Erro ao publicar MQTT: {resultado.rc}", flush=True)
+
         time.sleep(2)
 
 except KeyboardInterrupt:
-    print("\nSimulador finalizado.")
+    print("\nSimulador finalizado.", flush=True)
     client.loop_stop()
     client.disconnect()
