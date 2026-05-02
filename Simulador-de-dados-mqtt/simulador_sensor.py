@@ -5,18 +5,10 @@ from datetime import datetime
 
 import paho.mqtt.client as mqtt
 
-# =========================
-# CONFIGURAÇÕES MQTT
-# =========================
-
 BROKER = "broker.hivemq.com"
-PORT = 8883  # TLS
+PORT = 8883
 TOPIC = "aeroponia/sensores/dados"
 
-
-# =========================
-# FUNÇÕES AUXILIARES
-# =========================
 
 def random_between(min_val, max_val, decimals=2):
     return round(random.uniform(min_val, max_val), decimals)
@@ -34,61 +26,32 @@ def gerar_dados():
     }
 
 
-# =========================
-# CALLBACK DE CONEXÃO
-# =========================
-
 def on_connect(client, userdata, flags, rc):
-    print(f"on_connect chamado. Código: {rc}", flush=True)
+    print(f"on_connect simulador. Código: {rc}", flush=True)
 
     if rc == 0:
-        print("Conectado ao broker MQTT com TLS!", flush=True)
+        print("Simulador conectado ao broker MQTT com TLS!", flush=True)
         print(f"Publicando no tópico: {TOPIC}", flush=True)
     else:
-        print(f"Erro ao conectar: {rc}", flush=True)
+        print(f"Erro ao conectar simulador: {rc}", flush=True)
 
-
-# =========================
-# CLIENTE MQTT
-# =========================
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
-
-# Ativa TLS/SSL
 client.tls_set()
-
 client.on_connect = on_connect
 
-
-# =========================
-# CONEXÃO MQTT
-# =========================
-
 print("Iniciando simulador...", flush=True)
-print(f"Broker: {BROKER}", flush=True)
-print(f"Porta: {PORT}", flush=True)
-print(f"Tópico: {TOPIC}", flush=True)
-
 client.connect(BROKER, PORT, 60)
-
-# Mantém conexão ativa em background
 client.loop_start()
-
-
-# =========================
-# LOOP PRINCIPAL
-# =========================
 
 try:
     while True:
         dados = gerar_dados()
+        payload = json.dumps(dados)
 
-        resultado = client.publish(TOPIC, json.dumps(dados))
+        result = client.publish(TOPIC, payload)
 
-        if resultado.rc == mqtt.MQTT_ERR_SUCCESS:
-            print("Dados enviados:", dados, flush=True)
-        else:
-            print(f"Erro ao publicar MQTT: {resultado.rc}", flush=True)
+        print("Dados enviados:", payload, "Resultado:", result.rc, flush=True)
 
         time.sleep(2)
 
